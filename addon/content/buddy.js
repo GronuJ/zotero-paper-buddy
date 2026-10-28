@@ -47,6 +47,7 @@ Zotero.ClaudePaperBuddy = {
 	sections: new Map(), // section body -> refresh()
 	expanded: new Map(), // thread id -> bool, user's choice in this session
 	openAnswers: new Set(), // long answers the user expanded
+	tagSuggestions: new Map(), // "libraryID/itemKey" -> { status, tags, error }
 	debounceTimers: new Map(),
 	queue: Promise.resolve(),
 	inFlight: new Set(),
@@ -592,7 +593,7 @@ Zotero.ClaudePaperBuddy = {
 
 	// ---------------------------------------------------------------- context
 
-	async buildContext(thread) {
+	async buildContext(thread, maxChars = 0) {
 		let attachment = Zotero.Items.getByLibraryAndKey(thread.libraryID, thread.attachmentKey);
 		let parent = attachment && attachment.parentItem;
 		let meta = [];
@@ -610,7 +611,7 @@ Zotero.ClaudePaperBuddy = {
 				let doi = parent.getField("DOI");
 				if (doi) meta.push("DOI: " + doi);
 				let abstract = parent.getField("abstractNote");
-				if (abstract && !this.getPref("fullText")) meta.push("Abstract: " + abstract);
+				if (abstract && (!this.getPref("fullText") || !attachment)) meta.push("Abstract: " + abstract);
 			}
 		}
 
@@ -628,7 +629,7 @@ Zotero.ClaudePaperBuddy = {
 			}
 		}
 
-		let max = Number(this.getPref("maxContextChars")) || 0;
+		let max = maxChars || Number(this.getPref("maxContextChars")) || 0;
 		if (!max) max = this.provider === "anthropic" ? 1500000 : 48000;
 		if (paperText.length > max) {
 			paperText = this.excerptAround(paperText, thread.quote, max);
@@ -659,6 +660,131 @@ Zotero.ClaudePaperBuddy = {
 		}
 		return `I highlighted this passage${page}:\n<highlight>\n${thread.quote || "(no text)"}\n</highlight>\n\n`
 			+ `My question: ${thread.messages[0].content}`;
+	},
+
+	// ---------------------------------------------------------------- tags
+
+	TAG_PROMPT: "You suggest Zotero tags for a research paper. You get the user's existing tags and the paper. "
+		+ "Pick 3 to 6 tags that describe what the paper is about: its topic, methods and field. "
+		+ "Strongly prefer tags from the existing list, written exactly as they appear there. "
+		+ "Suggest at most 2 new tags, and only for an important topic that no existing tag covers; "
+		+ "write new tags in the same style as the existing ones. "
+		+ "Reply with JSON only, no other text: {\"existing\": [\"...\"], \"new\": [\"...\"]}",
+
+	tagKey(item) {
+		return item.libraryID + "/" + item.key;
+	},
+
+	// Tags go on the paper itself, not the PDF, so they show up in the library and in exports
+	tagTarget(item) {
+		if (!item) return null;
+		if (item.isRegularItem()) return item;
+		if (item.isAttachment() && item.parentItem && item.parentItem.isRegularItem()) return item.parentItem;
+		return null;
+	},
+
+	async suggestTags(item) {
+		let key = this.tagKey(item);
+		this.tagSuggestions.set(key, { status: "pending", tags: [] });
+		this.refreshSections();
+		try {
+			let attachment = item.getAttachments().map(id => Zotero.Items.get(id)).filter(Boolean).find(a => a.isPDFAttachment?.() || a.isFileAttachment?.());
+			let context = await this.buildContext({
+				libraryID: item.libraryID,
+				attachmentKey: attachment ? attachment.key : null,
+				quote: "",
+			}, 40000);
+			let existing = (await Zotero.Tags.getAll(item.libraryID))
+				.filter(t => !t.type)
+				.map(t => t.tag)
+				.slice(0, 1000);
+			let current = new Set(item.getTags().map(t => t.tag.toLowerCase()));
+			let prompt = `<existing_tags>\n${existing.join("\n") || "(none yet)"}\n</existing_tags>\n\n${context}`;
+			let { text } = await this.callSimple(this.TAG_PROMPT, prompt);
+			let json = JSON.parse((text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
+			let byLower = new Map(existing.map(t => [t.toLowerCase(), t]));
+			let tags = [];
+			let seen = new Set();
+			let add = (name, isNew) => {
+				name = String(name || "").trim();
+				let lower = name.toLowerCase();
+				if (!name || name.length > 80 || seen.has(lower) || current.has(lower)) return;
+				seen.add(lower);
+				// A "new" tag that already exists is not new
+				tags.push(byLower.has(lower) ? { name: byLower.get(lower), isNew: false } : { name, isNew });
+			};
+			(json.existing || []).forEach(t => add(t, false));
+			(json.new || []).slice(0, 2).forEach(t => add(t, true));
+			this.tagSuggestions.set(key, { status: "done", tags: tags.slice(0, 8) });
+		}
+		catch (e) {
+			Zotero.logError(e);
+			let message = e.userMessage || (e instanceof SyntaxError ? "The model's reply wasn't in the expected format. Try again." : e.message);
+			this.tagSuggestions.set(key, { status: "error", tags: [], error: message });
+		}
+		this.refreshSections();
+	},
+
+	async addSuggestedTag(item, name) {
+		item.addTag(name);
+		await item.saveTx();
+		let entry = this.tagSuggestions.get(this.tagKey(item));
+		if (entry) entry.tags = entry.tags.filter(t => t.name !== name);
+		this.refreshSections();
+	},
+
+	// One-off request without paper caching or conversation, used for tags
+	async callSimple(system, text) {
+		let provider = this.provider;
+		let key = await this.getAPIKey(provider);
+		if (!key) throw this.userError("Add your API key in Zotero › Settings › Claude first.");
+		let model = this.modelName;
+		if (!model) throw this.userError("Set a model name in Zotero › Settings › Claude first.");
+		if (provider === "anthropic") {
+			return this.callAnthropic({ key, model, system, messages: [{ role: "user", content: text }] });
+		}
+		return this.callOpenAI({ key, model, messages: [{ role: "system", content: system }, { role: "user", content: text }] });
+	},
+
+	renderTags(h, item) {
+		let target = this.tagTarget(item);
+		if (!target) return null;
+		let entry = this.tagSuggestions.get(this.tagKey(target));
+		let row = h("div", { class: "cpb-tags" });
+		if (!entry || entry.status === "error") {
+			row.append(h("button", {
+				class: "cpb-tag-suggest",
+				onclick: () => this.suggestTags(target),
+			}, entry ? "Try again" : "Suggest tags"));
+			if (entry) row.append(h("span", { class: "cpb-tags-note cpb-tags-error" }, entry.error));
+			return row;
+		}
+		if (entry.status === "pending") {
+			row.append(h("span", { class: "cpb-tags-note" }, "Suggesting tags…"));
+			return row;
+		}
+		if (!entry.tags.length) {
+			row.append(h("span", { class: "cpb-tags-note" }, "No more tag suggestions."));
+			row.append(h("a", {
+				href: "#",
+				class: "cpb-link",
+				onclick: (e) => {
+					e.preventDefault();
+					this.tagSuggestions.delete(this.tagKey(target));
+					this.refreshSections();
+				},
+			}, "Done"));
+			return row;
+		}
+		row.append(h("span", { class: "cpb-tags-note" }, "Click to add:"));
+		for (let tag of entry.tags) {
+			row.append(h("button", {
+				class: "cpb-tag" + (tag.isNew ? " cpb-tag-new" : ""),
+				title: tag.isNew ? "New tag, not in your library yet" : "Add this tag",
+				onclick: () => this.addSuggestedTag(target, tag.name).catch(e => Zotero.logError(e)),
+			}, (tag.isNew ? "+ " : "") + tag.name));
+		}
+		return row;
 	},
 
 	// ---------------------------------------------------------------- providers
@@ -1187,6 +1313,9 @@ Zotero.ClaudePaperBuddy = {
 			}
 			root.append(list);
 		}
+
+		let tagRow = this.renderTags(h, item);
+		if (tagRow) root.append(tagRow);
 
 		let providerLabel = this.provider === "anthropic" ? this.modelName : `${this.modelName} (OpenAI-compatible)`;
 		root.append(h("div", { class: "cpb-footer" },
