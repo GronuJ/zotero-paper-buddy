@@ -317,37 +317,3 @@
 	border: 1px solid var(--fill-quinary, #e0e0e0);
 	border-radius: 4px;
 }
-.cpb-tags {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 6px;
-	padding: 4px 4px 0;
-}
-.cpb-tags-note {
-	font-size: 11px;
-	color: var(--fill-secondary, #666);
-}
-.cpb-tags-error {
-	color: #a33a14;
-}
-.cpb-tag-suggest,
-.cpb-tag {
-	appearance: none;
-	height: 22px;
-	padding: 0 9px;
-	border: 1px solid var(--fill-quarternary, #ccc);
-	border-radius: 11px;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	font-size: 11.5px;
-	cursor: pointer;
-}
-.cpb-tag-suggest:hover,
-.cpb-tag:hover {
-	background: var(--fill-quinary, rgba(127, 127, 127, 0.15));
-}
-.cpb-tag-new {
-	border-style: dashed;
-}

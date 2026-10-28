@@ -15,7 +15,6 @@ Supports Zotero 7 to 10.
 - **Figures and tables.** Draw an image annotation around a figure, write your question as the comment, and the model sees the image itself.
 - **Whole-paper context.** The paper's full text goes along with each question. With Claude it is prompt-cached, so follow-up questions on the same paper cost much less.
 - **Notes.** All Q&A on a paper is mirrored into a "Claude Q&A" child note.
-- **Tag suggestions.** Click **Suggest tags** and the model proposes a few tags for the paper, preferring tags you already use. Click a tag to add it. Nothing is tagged without a click.
 
 ## Installation
 
@@ -67,8 +66,6 @@ API keys are stored in Zotero's password manager, with a separate key for each p
 **Other ways to ask.** Highlights you make in the question color and comment on appear in the panel as "Not asked yet", with **Ask** and **Ask all** buttons. You can also right-click any annotation and choose **Ask Claude**.
 
 **Follow-ups.** Type a follow-up under any answer, or use **Ask again** to start the thread over.
-
-**Tag a paper.** Click **Suggest tags** at the bottom of the Claude panel. The model reads the paper and your existing tags and suggests 3 to 6, mostly from tags you already use. New tags have a dashed outline and a "+". Click a tag to add it to the paper. Automatic tags (for example from imports) are not used as suggestions.
 
 ### Importing into Obsidian
 
