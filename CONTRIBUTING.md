@@ -61,7 +61,8 @@ Every release is delivered to all users automatically. Installed copies check th
    git tag v0.6.1
    git push origin v0.6.1
    ```
-3. The Release workflow checks that the tag matches the manifest, builds the `.xpi` and `update.json`, and publishes them as a GitHub release.
+   Or, on GitHub, open **Releases › Draft a new release**, create the tag `v0.6.1` and click **Publish release**.
+3. The Release workflow checks that the tag matches the manifest, builds the `.xpi` and `update.json`, and attaches them to the release.
 
 Zotero installs the update within about a day, or right away through **Tools › Plugins › gear icon › Check for Updates**.
 

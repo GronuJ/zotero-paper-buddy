@@ -1,14 +1,21 @@
 name: Release
 
-# Push a tag like v0.6.1 to publish a release. Installed copies pick it up
-# through the update_url in addon/manifest.json, which points at the
-# update.json attached to the latest release.
+# Publish a release by pushing a tag like v0.6.1, or by publishing a release
+# with that tag on GitHub. Either way this builds the .xpi and update.json and
+# attaches them to the release. Installed copies pick it up through the
+# update_url in addon/manifest.json, which points at the update.json of the
+# latest release.
 on:
   push:
     tags: ["v*"]
+  release:
+    types: [published]
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
 
 jobs:
   release:
@@ -27,7 +34,12 @@ jobs:
           fi
       - run: npm run check
       - run: npm run build
-      - name: Create the release
+      - name: Create the release or add the files to it
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/*.xpi build/update.json --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" build/*.xpi build/update.json --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" build/*.xpi build/update.json --title "$GITHUB_REF_NAME" --generate-notes
+          fi
