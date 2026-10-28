@@ -309,14 +309,6 @@
 .cpb-more {
 	margin-top: -4px;
 }
-.cpb-cost {
-	font-size: 10.5px;
-	color: var(--fill-secondary, #777);
-	margin-top: -4px;
-}
-.cpb-usage {
-	justify-content: space-between;
-}
 .cpb-figure {
 	max-width: 100%;
 	max-height: 160px;

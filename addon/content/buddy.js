@@ -15,22 +15,6 @@ Zotero.ClaudePaperBuddy = {
 	FALLBACK_BETA: "server-side-fallback-2026-07-01",
 	FALLBACK_MODELS: ["claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"],
 
-	// USD per million tokens: input, output, cache read, cache write (5-minute)
-	PRICES: {
-		"claude-fable-5-1": [10, 50, 0.25, 12.5],
-		"claude-fable-5": [10, 50, 1, 12.5],
-		"claude-opus-5-5": [4, 20, 0.2, 5],
-		"claude-opus-5": [5, 25, 0.5, 6.25],
-		"claude-opus-4-8": [5, 25, 0.5, 6.25],
-		"claude-opus-4-7": [5, 25, 0.5, 6.25],
-		"claude-opus-4-6": [5, 25, 0.5, 6.25],
-		"claude-sonnet-5-5": [2, 10, 0.2, 2.5],
-		"claude-sonnet-5": [2, 10, 0.2, 2.5],
-		"claude-sonnet-4-6": [3, 15, 0.3, 3.75],
-		"claude-haiku-5-5": [0.1, 0.5, 0.01, 0.125],
-		"claude-haiku-4-5": [1, 5, 0.1, 1.25],
-	},
-
 	COLORS: {
 		"#ffd400": "yellow",
 		"#ff6666": "red",
@@ -55,7 +39,7 @@ Zotero.ClaudePaperBuddy = {
 	},
 
 	// State
-	store: { threads: {}, notes: {}, spend: {}, quota: null },
+	store: { threads: {}, notes: {} },
 	storePath: null,
 	notifierID: null,
 	paneID: null,
@@ -206,8 +190,6 @@ Zotero.ClaudePaperBuddy = {
 				this.store = {
 					threads: data.threads || {},
 					notes: data.notes || {},
-					spend: data.spend || {},
-					quota: data.quota || null,
 				};
 			}
 		}
@@ -573,8 +555,6 @@ Zotero.ClaudePaperBuddy = {
 		try {
 			let result = await this.callModelWithRetries(thread);
 			let message = { role: "assistant", content: result.text, model: result.model };
-			if (result.cost !== undefined) message.cost = result.cost;
-			if (result.usage) message.usage = result.usage;
 			thread.messages.push(message);
 			thread.status = "done";
 			thread.error = null;
@@ -820,84 +800,10 @@ Zotero.ClaudePaperBuddy = {
 			text += "\n\n_(The answer was cut off because it hit the length limit.)_";
 		}
 		if (!text) throw this.userError("Claude returned an empty answer. Try again.");
-		let usage = data.usage || {};
-		let cost = this.costOf(data.model || model, usage);
-		if (cost !== null) this.recordSpend(cost);
 		return {
 			text,
 			model: data.model || model,
-			cost: cost === null ? undefined : cost,
-			usage: {
-				input: usage.input_tokens || 0,
-				output: usage.output_tokens || 0,
-				cacheRead: usage.cache_read_input_tokens || 0,
-				cacheWrite: usage.cache_creation_input_tokens || 0,
-			},
 		};
-	},
-
-	costOf(model, usage) {
-		let id = String(model || "").replace(/^anthropic\./, "");
-		let price = this.PRICES[id] || this.PRICES[Object.keys(this.PRICES).find(k => id.startsWith(k + "-"))];
-		if (!price) return null;
-		let [input, output, cacheRead, cacheWrite] = price;
-		return ((usage.input_tokens || 0) * input
-			+ (usage.output_tokens || 0) * output
-			+ (usage.cache_read_input_tokens || 0) * cacheRead
-			+ (usage.cache_creation_input_tokens || 0) * cacheWrite) / 1e6;
-	},
-
-	monthKey(date = new Date()) {
-		return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
-	},
-
-	recordSpend(cost) {
-		let key = this.monthKey();
-		let month = this.store.spend[key] || { cost: 0, requests: 0 };
-		month.cost += cost;
-		month.requests += 1;
-		this.store.spend[key] = month;
-		this.saveStore();
-	},
-
-	monthSpend() {
-		return this.store.spend[this.monthKey()] || { cost: 0, requests: 0 };
-	},
-
-	formatCost(usd) {
-		if (usd < 0.001) return "<$0.001";
-		if (usd < 0.1) return "$" + usd.toFixed(3);
-		if (usd < 10) return "$" + usd.toFixed(2);
-		return "$" + usd.toFixed(0);
-	},
-
-	// SAIA (and some other OpenAI-compatible servers) report the remaining quota in headers
-	recordQuota(xhr) {
-		let read = name => {
-			let v = parseInt(xhr.getResponseHeader?.(name), 10);
-			return Number.isFinite(v) ? v : null;
-		};
-		let quota = {
-			day: read("x-ratelimit-remaining-day"),
-			dayLimit: read("x-ratelimit-limit-day"),
-			month: read("x-ratelimit-remaining-month"),
-			monthLimit: read("x-ratelimit-limit-month"),
-			hour: read("x-ratelimit-remaining-hour"),
-			at: Date.now(),
-		};
-		if (quota.day === null && quota.month === null && quota.hour === null) return;
-		this.store.quota = quota;
-		this.saveStore();
-	},
-
-	quotaText() {
-		let q = this.store.quota;
-		if (!q) return null;
-		let parts = [];
-		if (q.day !== null) parts.push(`${q.day}${q.dayLimit ? "/" + q.dayLimit : ""} requests left today`);
-		if (q.month !== null) parts.push(`${q.month}${q.monthLimit ? "/" + q.monthLimit : ""} this month`);
-		if (!parts.length && q.hour !== null) parts.push(`${q.hour} requests left this hour`);
-		return parts.join(" · ");
 	},
 
 	async callOpenAI({ key, model, messages }) {
@@ -908,7 +814,6 @@ Zotero.ClaudePaperBuddy = {
 			"Authorization": "Bearer " + key,
 		}, { model, messages });
 		let data = xhr.response;
-		this.recordQuota(xhr);
 		if (xhr.status < 200 || xhr.status >= 300) {
 			let msg = data?.error?.message || data?.message || data?.detail;
 			throw this.httpError(xhr, typeof msg === "string" ? msg : null);
@@ -1284,34 +1189,6 @@ Zotero.ClaudePaperBuddy = {
 		}
 
 		let providerLabel = this.provider === "anthropic" ? this.modelName : `${this.modelName} (OpenAI-compatible)`;
-		let paperCost = 0;
-		let costed = false;
-		for (let t of threads) {
-			for (let m of t.messages) {
-				if (typeof m.cost === "number") {
-					paperCost += m.cost;
-					costed = true;
-				}
-			}
-		}
-		let usageText = null;
-		if (this.provider === "anthropic") {
-			let month = this.monthSpend();
-			let monthName = new Date().toLocaleString(undefined, { month: "long" });
-			usageText = (costed ? `This paper ${this.formatCost(paperCost)} · ` : "")
-				+ `${monthName} ${this.formatCost(month.cost)}`;
-		}
-		else {
-			usageText = this.quotaText();
-		}
-		if (usageText) {
-			root.append(h("div", {
-				class: "cpb-footer cpb-usage",
-				title: this.provider === "anthropic"
-					? "Estimated from token counts at list prices. Only counts requests made by this plugin."
-					: null,
-			}, h("span", {}, usageText)));
-		}
 		root.append(h("div", { class: "cpb-footer" },
 			h("span", { class: "cpb-dot", style: `background: ${color}` }),
 			h("span", {}, this.getPref("autoAsk")
@@ -1412,14 +1289,6 @@ Zotero.ClaudePaperBuddy = {
 				answer.append(h("span", { class: "cpb-who cpb-claude" }, "Claude "));
 				let md = this.htmlFragment(doc, this.markdownToHTML(m.content));
 				answer.append(md);
-				let costLine = typeof m.cost === "number"
-					? h("div", {
-						class: "cpb-cost",
-						title: m.usage
-							? `${m.usage.input} input, ${m.usage.cacheRead} cached, ${m.usage.cacheWrite} written to cache, ${m.usage.output} output tokens`
-							: null,
-					}, `${this.formatCost(m.cost)} · ${m.model || ""}`)
-					: null;
 				// Long answers start clamped, with a toggle
 				if (m.content.length > 600) {
 					let key = t.id + "#" + i;
@@ -1436,11 +1305,9 @@ Zotero.ClaudePaperBuddy = {
 							this.refreshSections();
 						},
 					}, open ? "Show less" : "Show more"));
-					if (costLine) card.append(costLine);
 					return;
 				}
 				card.append(answer);
-				if (costLine) card.append(costLine);
 			}
 		});
 

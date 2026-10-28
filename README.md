@@ -14,7 +14,6 @@ Supports Zotero 7 to 10.
 - **Answers in the reader sidebar.** Each question becomes a thread with the answer, follow-up questions, Show in PDF, Copy and Ask again.
 - **Figures and tables.** Draw an image annotation around a figure, write your question as the comment, and the model sees the image itself.
 - **Whole-paper context.** The paper's full text goes along with each question. With Claude it is prompt-cached, so follow-up questions on the same paper cost much less.
-- **Cost and quota.** Each Claude answer shows its estimated cost, and the panel shows totals for the paper and the month. For SAIA it shows the requests you have left.
 - **Notes.** All Q&A on a paper is mirrored into a "Claude Q&A" child note.
 
 ## Installation
