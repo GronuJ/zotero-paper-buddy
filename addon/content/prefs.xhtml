@@ -1,0 +1,89 @@
+<linkset>
+	<html:link rel="localization" href="claude-paper-buddy.ftl"/>
+</linkset>
+<vbox id="cpb-prefs" class="main-section">
+	<groupbox>
+		<label><html:h2>Provider</html:h2></label>
+		<radiogroup id="cpb-provider" preference="extensions.claudepaperbuddy.provider">
+			<radio value="anthropic" label="Anthropic (Claude)"/>
+			<radio value="openai" label="OpenAI-compatible (GWDG SAIA, Ollama, …)"/>
+		</radiogroup>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2>API key</html:h2></label>
+		<description id="cpb-key-help">Your key is stored in Zotero's password manager, not in the settings file. Each provider keeps its own key.</description>
+		<hbox align="center" style="gap: 6px; margin-top: 6px;">
+			<html:input id="cpb-key" type="password" style="flex: 1; min-width: 260px;" placeholder="Paste your API key" aria-label="API key"/>
+			<button id="cpb-key-save" label="Save key"/>
+			<button id="cpb-key-test" label="Test"/>
+		</hbox>
+		<label id="cpb-key-status" style="margin-top: 4px;"/>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2>Model</html:h2></label>
+		<hbox align="center" style="gap: 6px;">
+			<label control="cpb-anthropic-model" value="Claude model:" style="min-width: 150px;"/>
+			<html:input id="cpb-anthropic-model" type="text" style="flex: 1;" preference="extensions.claudepaperbuddy.anthropicModel"/>
+		</hbox>
+		<hbox align="center" style="gap: 6px; margin-top: 4px;">
+			<label control="cpb-effort" value="Effort:" style="min-width: 150px;"/>
+			<menulist id="cpb-effort" preference="extensions.claudepaperbuddy.effort">
+				<menupopup>
+					<menuitem value="low" label="Low (fastest, cheapest)"/>
+					<menuitem value="medium" label="Medium"/>
+					<menuitem value="high" label="High (recommended)"/>
+					<menuitem value="xhigh" label="Extra high"/>
+					<menuitem value="max" label="Max"/>
+				</menupopup>
+			</menulist>
+		</hbox>
+		<hbox align="center" style="gap: 6px; margin-top: 10px;">
+			<label control="cpb-openai-url" value="OpenAI-compatible URL:" style="min-width: 150px;"/>
+			<html:input id="cpb-openai-url" type="text" style="flex: 1;" preference="extensions.claudepaperbuddy.openaiBaseURL"/>
+		</hbox>
+		<hbox align="center" style="gap: 6px; margin-top: 4px;">
+			<label control="cpb-openai-model" value="OpenAI-compatible model:" style="min-width: 150px;"/>
+			<html:input id="cpb-openai-model" type="text" style="flex: 1;" preference="extensions.claudepaperbuddy.openaiModel"/>
+		</hbox>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2>Questions</html:h2></label>
+		<hbox align="center" style="gap: 6px;">
+			<label control="cpb-color" value="Question color:" style="min-width: 150px;"/>
+			<menulist id="cpb-color" preference="extensions.claudepaperbuddy.color">
+				<menupopup>
+					<menuitem value="#ffd400" label="Yellow"/>
+					<menuitem value="#ff6666" label="Red"/>
+					<menuitem value="#5fb236" label="Green"/>
+					<menuitem value="#2ea8e5" label="Blue"/>
+					<menuitem value="#a28ae5" label="Purple"/>
+					<menuitem value="#e56eee" label="Magenta"/>
+					<menuitem value="#f19837" label="Orange"/>
+					<menuitem value="#aaaaaa" label="Gray"/>
+				</menupopup>
+			</menulist>
+		</hbox>
+		<hbox align="center" style="gap: 6px;">
+			<label control="cpb-length" value="Answer length:" style="min-width: 150px;"/>
+			<menulist id="cpb-length" preference="extensions.claudepaperbuddy.answerLength">
+				<menupopup>
+					<menuitem value="short" label="Short (2-4 sentences)"/>
+					<menuitem value="medium" label="Medium (one paragraph or a short list)"/>
+					<menuitem value="detailed" label="Detailed"/>
+				</menupopup>
+			</menulist>
+		</hbox>
+		<checkbox id="cpb-auto" label="Send questions automatically (about 6 seconds after I stop typing the comment)" preference="extensions.claudepaperbuddy.autoAsk"/>
+		<checkbox id="cpb-fulltext" label="Send the whole paper as context" preference="extensions.claudepaperbuddy.fullText"/>
+		<checkbox id="cpb-note" label="Also save answers in a &quot;Claude Q&amp;A&quot; note on the paper" preference="extensions.claudepaperbuddy.writeNote"/>
+	</groupbox>
+
+	<groupbox>
+		<label><html:h2>Instructions for the model</html:h2></label>
+		<description>Leave empty to use the default instructions. The answer length setting is added either way.</description>
+		<html:textarea id="cpb-system" rows="6" style="width: 100%; box-sizing: border-box; margin-top: 6px;" aria-label="Instructions for the model"></html:textarea>
+	</groupbox>
+</vbox>

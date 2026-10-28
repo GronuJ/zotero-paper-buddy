@@ -1,0 +1,13 @@
+pref("extensions.claudepaperbuddy.provider", "anthropic");
+pref("extensions.claudepaperbuddy.anthropicModel", "claude-opus-5-5");
+pref("extensions.claudepaperbuddy.effort", "high");
+pref("extensions.claudepaperbuddy.openaiBaseURL", "https://chat-ai.academiccloud.de/v1");
+pref("extensions.claudepaperbuddy.openaiModel", "qwen3.5-397b-a17b");
+pref("extensions.claudepaperbuddy.color", "#e56eee");
+pref("extensions.claudepaperbuddy.autoAsk", false);
+pref("extensions.claudepaperbuddy.fullText", true);
+pref("extensions.claudepaperbuddy.writeNote", true);
+pref("extensions.claudepaperbuddy.debounceSeconds", 6);
+pref("extensions.claudepaperbuddy.maxContextChars", 0);
+pref("extensions.claudepaperbuddy.systemPrompt", "");
+pref("extensions.claudepaperbuddy.answerLength", "short");

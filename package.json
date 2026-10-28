@@ -1,0 +1,8 @@
+{
+  "name": "zotero-paper-buddy",
+  "private": true,
+  "scripts": {
+    "check": "node --check addon/bootstrap.js && node --check addon/content/buddy.js && node --check addon/content/prefs-pane.js && node -e \"JSON.parse(require('fs').readFileSync('addon/manifest.json','utf8'))\"",
+    "build": "node scripts/build.mjs"
+  }
+}
