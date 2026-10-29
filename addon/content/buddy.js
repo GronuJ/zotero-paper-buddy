@@ -359,7 +359,7 @@ Zotero.ClaudePaperBuddy = {
 		let input = doc.createElement("input");
 		input.type = "text";
 		input.size = 1;
-		input.placeholder = "Ask Claude…";
+		input.placeholder = this.provider === "anthropic" ? "Ask Claude…" : "Ask a question…";
 		input.setAttribute("aria-label", "Ask Claude about this selection");
 		input.setAttribute("style", "flex: 1 1 0; width: 0; min-width: 0; height: 26px; box-sizing: border-box; padding: 0 8px; "
 			+ "border: 1px solid var(--fill-quarternary, #ccc); border-radius: 5px; font: inherit; font-size: 12px; "
@@ -878,6 +878,13 @@ Zotero.ClaudePaperBuddy = {
 
 	// ---------------------------------------------------------------- markdown
 
+	// Name shown above an answer: "Claude" for Claude models, otherwise the model's own name
+	answererName(model) {
+		let name = String(model || "").split("/").pop().trim();
+		if (!name) return this.provider === "anthropic" ? "Claude" : "Model";
+		return /claude/i.test(name) ? "Claude" : name;
+	},
+
 	escapeHTML(s) {
 		return String(s)
 			.replace(/&/g, "&amp;")
@@ -1036,7 +1043,7 @@ Zotero.ClaudePaperBuddy = {
 					parts.push(`<p><strong>You:</strong> ${this.escapeHTML(m.content)}</p>`);
 				}
 				else {
-					parts.push("<p><strong>Claude:</strong></p>");
+					parts.push(`<p><strong>${this.escapeHTML(this.answererName(m.model))}:</strong></p>`);
 					parts.push(this.markdownToHTML(m.content));
 				}
 			}
@@ -1286,7 +1293,7 @@ Zotero.ClaudePaperBuddy = {
 			}
 			else {
 				let answer = h("div", { class: "cpb-msg cpb-answer" });
-				answer.append(h("span", { class: "cpb-who cpb-claude" }, "Claude "));
+				answer.append(h("span", { class: "cpb-who cpb-claude" }, this.answererName(m.model) + " "));
 				let md = this.htmlFragment(doc, this.markdownToHTML(m.content));
 				answer.append(md);
 				// Long answers start clamped, with a toggle

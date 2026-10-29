@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Paper Buddy for Zotero",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Ask Claude or another AI model about passages you highlight. The answer appears in the reader sidebar.",
   "author": "Jost",
   "icons": {
